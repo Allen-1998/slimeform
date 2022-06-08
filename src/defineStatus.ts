@@ -1,10 +1,11 @@
-import { invoke, isFunction, watchIgnorable } from '@vueuse/shared'
 import type { Ref, UnwrapNestedRefs, WatchStopHandle } from 'vue'
 import { computed, reactive, watchEffect } from 'vue'
 import type { RuleItem, UseFormDefaultMessage, UseFormRule } from './type/form'
 import type { StatusItem } from './type/formStatus'
 import { deepEqual } from './util/deepEqual'
-import { isHasOwn, isObjectType } from './util/is'
+import { invoke } from './util/invoke'
+import { isFunction, isHasOwn, isObjectType } from './util/is'
+import { watchIgnorable } from './util/watchIgnorable'
 
 export function initStatus<FormT extends {}>(
   status: Record<PropertyKey, StatusItem>,
@@ -44,20 +45,27 @@ function statusControl<FormT extends {}>(
     status[key].isError = isError
   }
 
+  function parseError(result: string | boolean) {
+    // result as string or falsity
+    // Exit validation on error
+    if (!result || typeof result === 'string') {
+      setError(result || formDefaultMessage)
+      return true
+    } // no errors
+    else {
+      setError(formDefaultMessage, false)
+      return false
+    }
+  }
+
   function ruleEffect() {
     // Traverse the ruleset and check the rules
+
     for (const rule of fieldRules || []) {
       const result = rule(formObj[key])
 
-      // result as string or falsity
-      // Exit validation on error
-      if (!result || typeof result === 'string') {
-        setError(result || formDefaultMessage)
+      if (parseError(result))
         break
-      } // no errors
-      else {
-        setError(formDefaultMessage, false)
-      }
     }
   }
 
